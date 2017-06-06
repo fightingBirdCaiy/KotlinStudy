@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
 
         var gramarTextView:View =  findViewById(R.id.grammar_tv)
         gramarTextView.setOnClickListener {
-            var s = sum(1,2);
+            /*var s = sum(1,2);
             Log.i(TAG,"sum(1,2)=$s")
             Log.i(TAG,"sum(3,4)=${sum(3,4)}")
             Log.i(TAG,"foo()start")
@@ -71,7 +71,9 @@ class MainActivity : AppCompatActivity() {
             C().caller(D())   // 输出 "D.foo in C"
             C1().caller(D())  // 输出 "D.foo in C1" —— 分发接收者虚拟解析
             C().caller(D1())  // 输出 "D.foo in C" —— 扩展接收者静态解析
-            C1().caller(D1()) // 输出 "D.foo in C1" —— 分发接收者虚拟解析
+            C1().caller(D1()) // 输出 "D.foo in C1" —— 分发接收者虚拟解析*/
+
+            studyGeneric();
         }
     }
 
