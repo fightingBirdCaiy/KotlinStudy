@@ -1,6 +1,7 @@
 package study.caiy.com.kotlinstudy
 
 import android.util.Log
+import java.io.Serializable
 
 /**
  * Created by yongc on 2017/6/6.
@@ -22,6 +23,8 @@ fun studyGeneric(){
     studyParameterisedFunction()
     studyParameterisedType()
     studyUpperBounds()
+    studyMultiBounds()
+    studyInvariance()
 }
 
 fun studyParameterisedFunction(){
@@ -100,4 +103,102 @@ fun studyUpperBounds() {
 
 
     Log.i(TAG, "---studyUpperBounds end---")
+}
+
+/**
+ * 函数 泛型参数 多个上界
+ * 关键字where
+ */
+fun<T> minSerializable(first: T, second: T) : T
+where T : Comparable<T>, T : Serializable{
+    val result = first.compareTo(second);
+    if(result <=0){
+        return first;
+    }else{
+        return second;
+    }
+}
+
+/**
+ * 只实现了Comparable<Year>接口
+ */
+class Year(val value: Int) : Comparable<Year>{
+    override fun compareTo(other: Year): Int {
+        return this.value.compareTo(other.value)
+    }
+}
+
+/**
+ * 实现了Comparable<SerializableYear>和Serializable两个接口
+ */
+class SerializableYear(val value:Int): Comparable<SerializableYear>,Serializable{
+    override fun compareTo(other: SerializableYear): Int {
+        return this.value.compareTo(other.value)
+    }
+}
+
+/**
+ * 类 泛型参数 多个上界
+ * 关键字 where T:Comparable<T>,T:Serializable
+ */
+class MultiBoundClass<T>(val value:T) where T:Comparable<T>,T:Serializable{
+
+    fun customCompareTo(other:MultiBoundClass<T>):Int{
+        return value.compareTo(other.value);
+    }
+
+}
+
+fun studyMultiBounds(){
+    Log.i(TAG, "---studyMultiBounds start---")
+
+    //函数的 有多个上界的泛型参数
+//    minSerializable(Year(2017),Year(2018))//编译错误，Year不是Serializable的子类
+    val minYear = minSerializable(SerializableYear(2017),SerializableYear(2018))
+    Log.i(TAG,"minSerializable(SerializableYear(2017),SerializableYear(2018))结果是${minYear.value}")
+
+//    MultiBoundClass(Year(2017));//编译错误，Year不是Serializable的子类
+    val multiBound2017 = MultiBoundClass(SerializableYear(2017))
+    val multiBound2018 = MultiBoundClass(SerializableYear(2018))
+    val result = multiBound2017.customCompareTo(multiBound2018)
+    Log.i(TAG,"multiBound2017.customCompareTo(multiBound2018)结果是$result")
+
+    Log.i(TAG, "---studyMultiBounds end---")
+}
+
+open class Fruit{
+
+}
+
+class Apple:Fruit(){
+
+}
+
+class Orange:Fruit(){
+
+}
+
+class Crate<T>(val elements:MutableList<T>){
+    fun add(t: T){
+        elements.add(t)
+    }
+
+    fun last(): T{
+        return elements.last()
+    }
+
+}
+
+fun foo(crate: Crate<Fruit>){
+    crate.add(Apple())
+}
+
+fun studyInvariance(){
+    Log.i(TAG, "---studyInvariance start---")
+
+    var oranges = Crate(mutableListOf(Orange(), Orange()))
+//    foo(oranges)//编译错误,Crate<Orange>不是Crate<Fruit>的子类型
+    var fruits = Crate(mutableListOf(Fruit(), Fruit()))
+
+    Log.i(TAG, "---studyInvariance end---")
 }
