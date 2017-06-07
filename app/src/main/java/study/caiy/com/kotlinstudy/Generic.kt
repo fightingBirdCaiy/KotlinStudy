@@ -2,6 +2,7 @@ package study.caiy.com.kotlinstudy
 
 import android.util.Log
 import java.io.Serializable
+import java.util.*
 
 /**
  * Created by yongc on 2017/6/6.
@@ -25,6 +26,9 @@ fun studyGeneric(){
     studyUpperBounds()
     studyMultiBounds()
     studyInvariance()
+    studyCovariant()
+    studyCovariantReturn()
+    studyContravariance()
 }
 
 fun studyParameterisedFunction(){
@@ -201,4 +205,131 @@ fun studyInvariance(){
     var fruits = Crate(mutableListOf(Fruit(), Fruit()))
 
     Log.i(TAG, "---studyInvariance end---")
+}
+
+/**
+ * 协变
+ * 关键词out
+ */
+class CovariantCrate<out T>(val elements: List<T>){
+    //编译错误 T声明成了out，可以理解成生成者。对于我们只能作为返回值，不能作为入参
+//    fun add(t: T){
+//        elements.add(t)
+//    }
+
+    fun last(): T{
+        return elements.last()
+    }
+}
+
+fun fooCovariant(crate: CovariantCrate<Fruit>){
+    //do nothing
+}
+
+fun studyCovariant(){
+    Log.i(TAG, "---studyCovariant start---")
+
+    val covariantOranges:CovariantCrate<Orange> = CovariantCrate(listOf(Orange(), Orange()))
+    fooCovariant(covariantOranges);//因为关键字out,CovariantCrate<Orange>被当做了CovariantCrate<Fruit>的子类
+
+    Log.i(TAG, "---studyCovariant end---")
+}
+
+open class Animal{
+
+}
+
+class Sheep : Animal(){
+    fun onlyInSheep(){
+
+    }
+}
+
+open class Farm {
+    open fun get(): Animal{
+        return Animal()
+    }
+}
+class SheepFarm() : Farm() {
+    override fun get(): Sheep{//函数返回值 型变 Sheep是Animal的子类
+        return Sheep()
+    }
+}
+
+/**
+ * 型变返回
+ * TODO--- 感觉和泛型没有关系
+ */
+fun studyCovariantReturn(){
+    Log.i(TAG, "---studyCovariantReturn start---")
+
+    val farm: Farm = SheepFarm()//显示声明为Farm类型
+    val animal1 = farm.get()
+//    animal1.onlyInSheep();//无法编译通过，因为farm.get()得到的是一个Animal类型，没有onlyInSheep方法
+
+    val sheepFarm = SheepFarm()//默认为SheepFarm类型
+    val animal2 = sheepFarm.get()
+    animal2.onlyInSheep();
+
+    Log.i(TAG, "---studyCovariantReturn end---")
+}
+
+interface Listener<T> {
+    fun onNext(t: T): Unit
+}
+class EventStream<T>(val listener: Listener<T>) {
+    fun start(t: T): Unit{
+        listener.onNext(t);
+    }
+    fun stop(): Unit{
+
+    }
+}
+
+/**
+ * 逆型变 关键词 in 消费者 只能作为函数入参，不能作为返回值
+ */
+interface Listener4Contra<in T> {
+    fun onNext(t: T): Unit
+}
+class EventStream4Contra<in T>(val listener: Listener4Contra<T>) {
+    fun start(t: T): Unit{
+        listener.onNext(t);
+    }
+    fun stop(): Unit{
+
+    }
+}
+
+fun studyContravariance(){
+    Log.i(TAG, "---studyContravariance start---")
+
+    //非型变示例
+    val stringListener = object : Listener<String> {
+        override fun onNext(t: String){
+            Log.i(TAG,t)
+        }
+    }
+    val stringStream = EventStream<String>(stringListener)//stringListener是Listener<String>类型，Listener<T>的子类一
+    stringStream.start("a")
+    val dateListener = object : Listener<Date> {
+        override fun onNext(t: Date){
+            Log.i(TAG,t.toString())
+        }
+    }
+    val dateStream = EventStream<Date>(dateListener)//dateListener是Listener<Date>类型，Listener<T>的子类二
+    dateStream.start(Date())
+
+    //可以看到这里定义了两个listener:stringListener、dateListener
+    //逆型变（关键字in）可以只用一个listener实现功能
+
+    val loggingListener = object : Listener4Contra<Any> {
+        override fun onNext(t: Any){
+            Log.i(TAG,t.toString())
+        }
+    }
+    EventStream4Contra<String>(loggingListener).start("b")//String是Any的子类
+    EventStream4Contra<Date>(loggingListener).start(Date())//Date是Any的子类
+
+    Log.i(TAG, "---studyContravariance end---")
 }
