@@ -29,6 +29,10 @@ fun studyGeneric(){
     studyCovariant()
     studyCovariantReturn()
     studyContravariance()
+    studyNothing()
+    studyTypeProjection()
+    studyTypeErasure()
+    studyTypeReification()
 }
 
 fun studyParameterisedFunction(){
@@ -323,7 +327,8 @@ fun studyContravariance(){
     //可以看到这里定义了两个listener:stringListener、dateListener
     //逆型变（关键字in）可以只用一个listener实现功能
 
-    val loggingListener = object : Listener4Contra<Any> {
+    val loggingListener = object :
+    Listener4Contra<Any> {
         override fun onNext(t: Any){
             Log.i(TAG,t.toString())
         }
@@ -332,4 +337,164 @@ fun studyContravariance(){
     EventStream4Contra<Date>(loggingListener).start(Date())//Date是Any的子类
 
     Log.i(TAG, "---studyContravariance end---")
+}
+
+class Box<out T>(){
+}
+
+interface Marshaller<out T> {
+    fun marshall(json: String): T?//函数返回参数类型为T
+}
+
+object StringMarshaller : Marshaller<String>{
+    override fun marshall(json: String): String? {//函数返回参数类型为String
+        return json;
+    }
+}
+
+object NoopMarshaller : Marshaller<Nothing> {
+    override fun marshall(json: String) = null////函数返回参数空
+}
+
+/**
+ * 关键字Nothing
+ * TODO 使用意义不太了解
+ * 如果一个函数不需要返回值，可以使用Nothing（官方文档上说：一个函数如果是死循环，除非线程被杀死，或者抛出异常，否则不会返回的方法）
+ */
+fun studyNothing(){
+    Log.i(TAG, "---studyNothing start---")
+
+    Box<String>()//正常实例化
+    Box<Nothing>()//Nothing实例化
+
+    val a = StringMarshaller.marshall("a")
+    Log.i(TAG,"a=$a")
+    val b = NoopMarshaller.marshall("b")
+    Log.i(TAG,"b=$b")
+    Log.i(TAG, "---studyNothing end---")
+}
+
+fun getWithCrate(crate: Crate<Fruit>){
+    //do nothing
+}
+
+fun getWithCrateWhenProjection(crate: Crate<out Fruit>){
+//    crate.add(Fruit())//编译不通过，因为是out类型，add方法被禁止访问
+    Log.i(TAG,"crate.last()结果是：" + crate.last())
+}
+
+class EventStream4Projection<T>(val listener: Listener<in T>) {
+    fun start(t: T): Unit{
+        listener.onNext(t);
+    }
+    fun stop(): Unit{
+
+    }
+}
+
+/**
+ * 泛型投影
+ *
+ */
+fun studyTypeProjection(){
+    Log.i(TAG, "---studyTypeProjection start---")
+
+    val oranges = Crate(mutableListOf(Orange(),Orange()))
+//    getWithCrate(oranges)//编译错误，Crate<Orange>不能转换为Crate<Fruit>
+    //假定Crate是第三方提供的类，不可修改。
+    //方法中加入关键字out:Crate<Orange>类型投影成了Crate<Fruit>
+    getWithCrateWhenProjection(oranges)
+
+    val loggingListener = object :Listener<Any> {
+        override fun onNext(t: Any){
+            Log.i(TAG,t.toString())
+        }
+    }
+//    EventStream<String>(loggingListener)//无法编译通过，需要Listener<String>,实际传递Listener<Any>
+    //假定Listener是第三方提供的接口，无法修改
+    //loggingListener一个listener适用于两个
+    EventStream4Projection<String>(loggingListener).start("b")//方法中加入关键字in : Listener<Any>类型投影成了Listener<String>
+    EventStream4Projection<Date>(loggingListener).start(Date())//方法中加入关键字in : Listener<Any>类型投影成了Listener<Date>
+
+    Log.i(TAG, "---studyTypeProjection end---")
+}
+
+fun printInts(list: Set<Int>): Unit {
+    for (int in list) Log.i(TAG,int.toString())
+}
+fun printStrings(list: Set<String>): Unit {
+    for (string in list) Log.i(TAG,string)
+}
+
+fun <T : Comparable<T>>max(list: List<T>): T {
+    var max = list.first()
+    for (t in list) {
+        if (t >max)
+            max = t
+    }
+    return max
+}
+
+/**
+ * 类型擦除
+ */
+fun studyTypeErasure(){
+    Log.i(TAG, "---studyTypeErasure start---")
+    printInts(setOf(1,2))
+    printStrings(setOf("a","b"))
+    Log.i(TAG,max(listOf("c","d")));
+    Log.i(TAG, "---studyTypeErasure end---")
+}
+
+inline fun <T>runtimeTypeNormal(): Unit {
+//    println("My type parameter is " + T::class.qualifiedName)//编译错误，无法调用::class
+}
+
+/**
+ *
+ * 运行时获取T的实际类型
+ * reified关键字，必须和inline配合使用
+ */
+inline fun <reified T>runtimeType4Refication(): Unit {
+    println("My type parameter is " + T::class.qualifiedName)
+}
+
+/**
+ * 运行时类型检查
+ */
+inline fun <reified T>List<Any>.collect(): List<T> {
+    return this.filter { it is T }.map { it as T }
+}
+
+/**
+ * 运行时类型检查 示例2
+ */
+inline fun <reified T>printT(any: Any): Unit {
+    if (any is T) {
+        Log.i(TAG,"I am a T: $any")
+    }else{
+        Log.i(TAG,"not match")
+    }
+}
+
+/**
+ * 类型具化
+ */
+fun studyTypeReification(){
+    Log.i(TAG, "---studyTypeReification start---")
+
+    //运行时获取T的实际类型
+    runtimeType4Refication<String>();
+    runtimeType4Refication<Int>();
+
+    //运行时类型检查
+    val list = listOf("green", false, 100, "blue")
+    val strings = list.collect<String>()
+    Log.i(TAG,"strings=$strings")
+
+    //字节码示例
+    printT<String>("a");
+    printT<String>(1);
+
+    Log.i(TAG, "---studyTypeReification end---")
 }
