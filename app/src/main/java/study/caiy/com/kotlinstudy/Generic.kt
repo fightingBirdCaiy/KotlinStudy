@@ -35,6 +35,7 @@ fun studyGeneric(){
     studyTypeErasure()
     studyTypeReification()
     studyRecursiveTypeBounds()
+    studyAlgebraicDataTypes()
 }
 
 fun studyParameterisedFunction(){
@@ -587,4 +588,72 @@ fun studyRecursiveTypeBounds(){
     //注意 BettingAccount4Best和BettingAccount类的区别
 
     Log.i(TAG, "---studyRecursiveTypeBounds end---")
+}
+
+/**
+ * 内部是链表类型的List
+ */
+sealed class MyList<out T> {
+    fun isEmpty() = when (this) {
+        is Empty -> true
+        is Node -> false
+    }
+    fun size(): Int= when (this) {
+        is Empty -> 0
+        is Node -> 1 + this.next.size()
+    }
+    fun tail(): MyList<T> = when (this) {
+        is Node -> this.next
+        is Empty -> this
+    }
+    fun head(): T = when (this) {
+        is Node<T> ->this.value
+        is Empty -> throw RuntimeException("Empty list")
+    }
+    operator fun get(pos: Int): T {
+        require(pos>= 0, { "Position must be >=0" })
+        return when (this) {
+            is Node<T> -> if (pos == 0) head() else this.next.get(pos - 1)
+            is Empty -> throw IndexOutOfBoundsException()
+        }
+    }
+    //方式一:注解
+    fun append(t: @UnsafeVariance T): MyList<T> = when (this) {//这里的@UnsafeVariance注释阻止了编译期报错
+        is Node<T> -> Node(this.value, this.next.append(t))
+        is Empty -> Node(t, Empty)
+    }
+    companion object {
+        operator fun <T>invoke(vararg values: T): MyList<T> {
+            var temp: MyList<T> = Empty
+            for (value in values) {
+                temp = temp.append(value)
+            }
+            return temp
+        }
+    }
+}
+private class Node<out T>(val value: T, val next: MyList<T>) : MyList<T>()
+private object Empty : MyList<Nothing>()
+
+//方式二：扩展函数
+fun <T>MyList<T>.appendOuter(t: T): MyList<T> = when (this) {
+    is Node<T> -> Node(this.value, this.next.append(t))
+    is Empty -> Node(t, Empty)
+}
+
+/**
+ * 代数数据类型
+ */
+fun studyAlgebraicDataTypes(){
+    Log.i(TAG, "---studyAlgebraicDataTypes start---")
+
+    var myList = MyList.invoke("this","is");
+    myList = myList.append("my")
+    myList = myList.appendOuter("list")
+    Log.i(TAG, myList.size().toString())
+    Log.i(TAG, myList.head())
+    Log.i(TAG, myList[1])
+    Log.i(TAG, myList.get(2))
+
+    Log.i(TAG, "---studyAlgebraicDataTypes end---")
 }
