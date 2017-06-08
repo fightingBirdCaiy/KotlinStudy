@@ -2,6 +2,7 @@ package study.caiy.com.kotlinstudy
 
 import android.util.Log
 import java.io.Serializable
+import java.math.BigDecimal
 import java.util.*
 
 /**
@@ -33,6 +34,7 @@ fun studyGeneric(){
     studyTypeProjection()
     studyTypeErasure()
     studyTypeReification()
+    studyRecursiveTypeBounds()
 }
 
 fun studyParameterisedFunction(){
@@ -497,4 +499,92 @@ fun studyTypeReification(){
     printT<String>(1);
 
     Log.i(TAG, "---studyTypeReification end---")
+}
+
+interface Account {
+    val balance: BigDecimal
+}
+data class SavingsAccount(override val balance: BigDecimal,val interestRate: BigDecimal) : Account,Comparable<SavingsAccount> {
+    override fun compareTo(other: SavingsAccount): Int =
+            balance.compareTo(other.balance)
+}
+data class TradingAccount(override val balance: BigDecimal, val margin:Boolean) : Account, Comparable<TradingAccount> {
+    override fun compareTo(other: TradingAccount): Int =
+            balance.compareTo(other.balance)
+}
+
+interface Account2 : Comparable<Account2> {
+    val balance: BigDecimal
+    override fun compareTo(other: Account2): Int =
+            balance.compareTo(other.balance)
+}
+data class SavingsAccount2(override val balance: BigDecimal,val interestRate: BigDecimal) : Account2{
+}
+data class TradingAccount2(override val balance: BigDecimal, val margin:Boolean) : Account2{
+}
+
+interface Account3<E> : Comparable<E> {
+    val balance: BigDecimal
+//    override fun compareTo(other: E): Int = balance.compareTo(other.balance)//编译错误，编译期无法判断泛型参数other有balance属性
+}
+//data class SavingsAccount3(override val balance: BigDecimal, val interestRate: BigDecimal) : Account3<SavingsAccount3>
+//data class TradingAccount3(override val balance: BigDecimal, val margin:Boolean) : Account3<TradingAccount3>
+
+interface Account4<E : Account4<E>> : Comparable<E> {
+    val balance: BigDecimal
+    override fun compareTo(other: E): Int = balance.compareTo(other.balance)
+}
+data class SavingsAccount4(override val balance: BigDecimal, val interestRate: BigDecimal) : Account4<SavingsAccount4>
+data class TradingAccount4(override val balance: BigDecimal, val margin:Boolean) : Account4<TradingAccount4>
+
+/**
+ * 缺陷：BettingAccount和泛型参数SavingsAccount4可以不同
+ */
+abstract class BettingAccount : Account4<SavingsAccount4>
+
+/**
+ * 最佳实践：BettingAccount4Best和泛型参数BettingAccount4Best相同
+ */
+abstract class BettingAccount4Best : Account4<BettingAccount4Best>
+
+/**
+ * 嵌套泛型边界
+ * 举例 <E : Account4<E>>
+ */
+fun studyRecursiveTypeBounds(){
+    Log.i(TAG, "---studyRecursiveTypeBounds start---")
+
+    //方式一
+    //缺点：compareTo在每个子类中都实现了，代码重复
+    val savings1 = SavingsAccount(BigDecimal(105), BigDecimal(0.04))
+    val savings2 = SavingsAccount(BigDecimal(396), BigDecimal(0.05))
+    savings1.compareTo(savings2)
+    val trading1 = TradingAccount(BigDecimal(211), true)
+    val trading2 = TradingAccount(BigDecimal(853), false)
+    trading1.compareTo(trading2)
+//    savings1.compareTo(trading1)//编译错误
+
+    //方式二
+    //缺点：savings和trading是不同的子类型，（需求是不比较不同子类型的acount）
+    val savings = SavingsAccount2(BigDecimal(105), BigDecimal(0.04))
+    val trading = TradingAccount2(BigDecimal(210), true)
+    savings.compareTo(trading)
+
+    //方式三
+    //无法编译成功 Account3及其子类
+
+    //方式四
+    val saving4s1 = SavingsAccount4(BigDecimal(105), BigDecimal(0.04))
+    val saving4s2 = SavingsAccount4(BigDecimal(396), BigDecimal(0.05))
+    val result1 = saving4s1.compareTo(saving4s2)
+    Log.i(TAG,"result1=$result1")
+    val trading41 = TradingAccount4(BigDecimal(853), true)
+    val trading42 = TradingAccount4(BigDecimal(518), false)
+    val result2 = trading41.compareTo(trading42)
+    Log.i(TAG,"result2=$result2")
+//    saving4s1.compareTo(trading42)//编译错误 达到目标
+
+    //注意 BettingAccount4Best和BettingAccount类的区别
+
+    Log.i(TAG, "---studyRecursiveTypeBounds end---")
 }
